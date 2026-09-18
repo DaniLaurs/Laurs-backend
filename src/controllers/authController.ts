@@ -45,16 +45,23 @@ export const register = async (req: Request, res: Response) => {
   });
 }
 };
-
 export const login = async (req: Request, res: Response) => {
+
+  console.log("🔥 ENTROU NO LOGIN");
+  console.log("🔥 BODY RECEBIDO:", req.body);
+
   try {
     const { email, password } = req.body;
+
+    console.log("📩 DADOS:", email);
 
     const user = await prisma.user.findUnique({
       where: {
         email,
       },
     });
+
+    console.log("👤 USUÁRIO:", user);
 
     if (!user) {
       return res.status(400).json({
@@ -67,15 +74,20 @@ export const login = async (req: Request, res: Response) => {
       user.password
     );
 
+    console.log("🔑 SENHA OK:", passwordMatch);
+
     if (!passwordMatch) {
       return res.status(400).json({
         error: "Senha inválida",
       });
     }
 
+    console.log("JWT SECRET:", process.env.JWT_SECRET);
+
     const token = jwt.sign(
       {
         id: user.id,
+        role: user.role,
       },
       process.env.JWT_SECRET as string,
       {
@@ -83,19 +95,46 @@ export const login = async (req: Request, res: Response) => {
       }
     );
 
-      return res.json({
+    console.log("🎟️ TOKEN GERADO");
+
+    return res.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         createdAt: user.createdAt,
       },
-
       token,
     });
+
   } catch (error) {
+    console.error("❌ ERRO LOGIN:", error);
+
     return res.status(500).json({
       error: "Erro no login",
+    });
+  }
+};
+export const getAllUsers = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json(users);
+  } catch (error) {
+
+    return res.status(500).json({
+      error: "Erro ao buscar usuários",
     });
   }
 };

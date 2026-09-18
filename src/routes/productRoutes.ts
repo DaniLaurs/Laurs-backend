@@ -4,7 +4,11 @@ import {
   createProduct,
   getProducts,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  addProductImage,
+  addProductVariant,
+  getProductById,
+  getPublicProducts
 } from "../controllers/productController";
 
 import { authMiddleware } from "../middleware/authMiddleware";
@@ -15,13 +19,27 @@ const router = Router();
 router.post(
   "/",
   authMiddleware,
-  upload.single("image"),
+  upload.array("images", 10),
   createProduct
 );
 
 router.get("/", authMiddleware, getProducts);
 
-router.put("/:id", authMiddleware, updateProduct);
+router.post("/:productId/images", addProductImage);
+
+router.post("/:productId/variants", addProductVariant);
+
+router.get("/search", getPublicProducts);
+
+router.get("/:id", getProductById);
+
+
+router.put(
+  "/:id",
+  authMiddleware,
+  upload.array("images", 10), // 🔥 ESSENCIAL
+  updateProduct
+);
 
 router.delete("/:id", authMiddleware, deleteProduct);
 

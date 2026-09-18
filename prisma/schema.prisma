@@ -13,24 +13,24 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
-
-  store Store?
+  role      String   @default("USER")
+  store     Store?
+  orders Order[]
 }
 
 model Store {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
-  slug        String?  @unique
   description String?
   logo        String?
   banner      String?
-
-  ownerId String @unique
-  owner   User   @relation(fields: [ownerId], references: [id])
-
-  products Product[]
-
-  createdAt DateTime @default(now())
+  segment String?
+  ownerId     String    @unique
+  createdAt   DateTime  @default(now())
+  slug        String?   @unique
+  products    Product[]
+  orders Order[]
+  owner       User      @relation(fields: [ownerId], references: [id])
 }
 
 model Product {
@@ -38,10 +38,75 @@ model Product {
   name        String
   description String?
   price       Float
-  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  category String?
+  subcategory String?
 
   storeId String
-  store   Store @relation(fields: [storeId], references: [id])
+  store   Store  @relation(fields: [storeId], references: [id])
 
+  images   ProductImage[]
+  variants ProductVariant[]
+  orderItems OrderItem[]
+}
+
+model ProductImage {
+  id       String @id @default(uuid())
+  imageUrl String
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id String @id @default(uuid())
+
+  color String?
+  size  String?
+
+  stock Int @default(0)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  images    VariantImage[]
+  orderItems OrderItem[]
+}
+
+model VariantImage {
+  id        String @id @default(uuid())
+  imageUrl  String
+
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  total     Float
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
+
+  userId  String
+  storeId String
+
+  user  User  @relation(fields: [userId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id       String @id @default(uuid())
+  quantity Int
+  price    Float
+
+  orderId   String
+  productId String
+  variantId String?
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 }
