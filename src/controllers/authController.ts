@@ -7,6 +7,24 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+  return res.status(400).json({
+    error: "Nome, e-mail e senha são obrigatórios",
+  });
+}
+
+if (!email.includes("@")) {
+  return res.status(400).json({
+    error: "Digite um e-mail válido",
+  });
+}
+
+    if (password.length < 8) {
+  return res.status(400).json({
+    error: "A senha deve ter pelo menos 8 caracteres",
+  });
+}
+
     const userExists = await prisma.user.findUnique({
       where: {
         email,
@@ -45,15 +63,14 @@ export const register = async (req: Request, res: Response) => {
   });
 }
 };
+
 export const login = async (req: Request, res: Response) => {
 
-  console.log("🔥 ENTROU NO LOGIN");
-  console.log("🔥 BODY RECEBIDO:", req.body);
 
   try {
     const { email, password } = req.body;
 
-    console.log("📩 DADOS:", email);
+
 
     const user = await prisma.user.findUnique({
       where: {
@@ -61,11 +78,10 @@ export const login = async (req: Request, res: Response) => {
       },
     });
 
-    console.log("👤 USUÁRIO:", user);
 
     if (!user) {
       return res.status(400).json({
-        error: "Usuário não encontrado",
+         error: "E-mail ou senha inválidos",
       });
     }
 
@@ -74,15 +90,13 @@ export const login = async (req: Request, res: Response) => {
       user.password
     );
 
-    console.log("🔑 SENHA OK:", passwordMatch);
 
     if (!passwordMatch) {
       return res.status(400).json({
-        error: "Senha inválida",
+         error: "E-mail ou senha inválidos",
       });
     }
 
-    console.log("JWT SECRET:", process.env.JWT_SECRET);
 
     const token = jwt.sign(
       {
@@ -95,7 +109,6 @@ export const login = async (req: Request, res: Response) => {
       }
     );
 
-    console.log("🎟️ TOKEN GERADO");
 
     return res.json({
       user: {
@@ -103,6 +116,7 @@ export const login = async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
         createdAt: user.createdAt,
+        role: user.role,
       },
       token,
     });

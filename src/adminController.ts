@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "../prisma/client";
+import { prisma } from "./prisma/client";
 
 export const getAdminStats = async (
   req: Request,
@@ -301,8 +301,7 @@ export const deleteUser = async (
   res: Response
 ) => {
   try {
-  const id = req.params.id as string;
-
+    const id = req.params.id as string;
 
     await prisma.user.delete({
       where: {
@@ -313,8 +312,15 @@ export const deleteUser = async (
     return res.json({
       message: "Usuário removido",
     });
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("ERRO AO EXCLUIR USUÁRIO:", error);
+
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        error:
+          "Não é possível excluir este usuário porque ele possui uma loja cadastrada.",
+      });
+    }
 
     return res.status(500).json({
       error: "Erro ao excluir usuário",

@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 interface TokenPayload {
-  role: any;
   id: string;
+  role: "USER" | "ADMIN";
 }
 
 export const authMiddleware = (

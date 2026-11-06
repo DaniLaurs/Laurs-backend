@@ -8,15 +8,17 @@ import storeRoutes from "./routes/storeRoutes";
 import productRoutes from "./routes/productRoutes";
 import adminRoutes from "./routes/admin.routes";
 import orderRoutes from "./routes/orderRoutes";
+import paymentRoutes from "./routes/paymentRoutes";
 
 
 dotenv.config();
 
-console.log("BANCO:", process.env.DATABASE_URL);
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+}));
 app.use(express.json());
 
 app.use("/auth", authRoutes);
@@ -24,6 +26,7 @@ app.use("/stores", storeRoutes);
 app.use("/products", productRoutes);
 app.use("/admin", adminRoutes);
 app.use("/orders", orderRoutes);
+app.use("/payments", paymentRoutes);
 
 
 app.get("/profile", authMiddleware, (req, res) => {
@@ -41,7 +44,6 @@ app.get("/", (req, res) => {
 app.get("/teste", (req, res) => {
   return res.json({
     mensagem: "teste backend dani",
-    banco: process.env.DATABASE_URL,
   });
 });
 

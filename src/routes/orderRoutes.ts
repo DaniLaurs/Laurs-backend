@@ -14,6 +14,7 @@ import { authMiddleware } from "../middleware/authMiddleware";
 
 const router = Router();
 
+
 router.post(
   "/",
   authMiddleware,

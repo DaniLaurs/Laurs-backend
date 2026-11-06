@@ -19,7 +19,7 @@ export const createProduct = async (req: Request, res: Response) => {
     console.log("BODY COMPLETO:", req.body);
 console.log("VARIANTS RAW:", req.body.variants);
 
-    const { name, description, price, category,subcategory, variants } = req.body;
+    const { name, description, price, category,subcategory, variants, stock } = req.body;
 
     console.log("REQ.BODY:", req.body);
 console.log("VARIANTS:", variants);
@@ -41,6 +41,7 @@ console.log("VARIANTS:", variants);
         category,
         subcategory,
         price: Number(price),
+        stock: Number(stock ?? 0),
         store: {
           connect: { id: store.id },
         },
@@ -146,6 +147,21 @@ export const updateProduct = async (req: Request, res: Response) => {
       where: { id, storeId: store.id },
     });
 
+    // =======================
+    if (variants) {   if (removedImages) {
+      const parsed = JSON.parse(removedImages);
+
+      await prisma.productImage.deleteMany({
+    where: {
+      id: { in: parsed },
+      productId: id,
+    },
+   });
+    }
+      const parsed =
+        typeof variants === "string"
+          ? JSON.parse(variants)
+          : variants;
     if (!product) {
       return res.status(404).json({ error: "Produto não encontrado" });
     }
@@ -157,10 +173,11 @@ export const updateProduct = async (req: Request, res: Response) => {
       const parsed = JSON.parse(removedImages);
 
       await prisma.productImage.deleteMany({
-        where: {
-          id: { in: parsed },
-        },
-      });
+    where: {
+      id: { in: parsed },
+      productId: id,
+    },
+   });
     }
 
     // =======================
@@ -179,12 +196,6 @@ export const updateProduct = async (req: Request, res: Response) => {
 
     // =======================
     // VARIANTS (RECREATE)
-    // =======================
-    if (variants) {
-      const parsed =
-        typeof variants === "string"
-          ? JSON.parse(variants)
-          : variants;
 
       console.log("PARSED:", parsed);
 

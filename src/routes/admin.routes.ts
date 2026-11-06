@@ -5,7 +5,7 @@ import {
   makeAdmin,
   removeAdmin,
   deleteUser,
-} from "../controllers/adminController";
+} from "../adminController";
 
 import { authMiddleware } from "../middleware/authMiddleware";
 import { adminMiddleware } from "../middleware/adminMiddleware";

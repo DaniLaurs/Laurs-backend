@@ -1,8 +1,28 @@
-node_modules
+# Dependências
+node_modules/
 
-# Keep environment variables out of version control
+# Variáveis de ambiente
 .env
+.env.*
 
+# Arquivos gerados
 /generated/prisma
+dist/
 
+# Uploads
 uploads/
+
+# Backups e arquivos locais
+backups/
+*.dump
+*.bak
+npx
+
+# Configurações locais
+.vscode/
+
+# Backups do schema Prisma
+prisma/schema-atual-backup.prisma
+prisma/schema-original-git.prisma
+
+prisma/utils/

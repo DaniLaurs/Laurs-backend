@@ -2,7 +2,7 @@ import { Router } from "express";
 import { login, register } from "../controllers/authController";
 import { adminMiddleware } from "../middleware/adminMiddleware";
 import { authMiddleware } from "../middleware/authMiddleware";
-import { deleteUser, makeAdmin, removeAdmin } from "../controllers/adminController";
+import { deleteUser, makeAdmin, removeAdmin } from "../adminController";
 
 const router = Router();
 

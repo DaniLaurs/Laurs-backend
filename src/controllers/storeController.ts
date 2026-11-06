@@ -10,6 +10,12 @@ export const createStore = async (
   try {
     const { name, description, segment, logo, banner, } = req.body;
 
+    if (!name || !description || !segment) {
+  return res.status(400).json({
+    error: "Preencha todos os campos obrigatórios",
+  });
+}
+
    
       const slugGenerated = name
   .toLowerCase()
