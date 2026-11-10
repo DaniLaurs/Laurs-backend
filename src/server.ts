@@ -16,9 +16,36 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-}));
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://laurs-frontend-ui7k.vercel.app",
+  process.env.FRONTEND_URL,
+].filter((origin): origin is string => Boolean(origin));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Permite chamadas sem origem, como algumas requisições servidor-servidor.
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Domínios de produção e preview do projeto Laurs na Vercel.
+      const isLaursVercel =
+        /^https:\/\/laurs-frontend-[a-z0-9-]+\.vercel\.app$/i.test(origin);
+
+      const isAllowed = allowedOrigins.includes(origin) || isLaursVercel;
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origem não permitida pelo CORS"));
+    },
+  })
+);
+
 app.use(express.json());
 
 app.use("/auth", authRoutes);
