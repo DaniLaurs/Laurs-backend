@@ -16,22 +16,23 @@ model User {
   role      String   @default("USER")
   orders    Order[]
   store     Store?
+  returnRequests ReturnRequest[]
 }
 
 model Store {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  logo        String?
-  banner      String?
-  segment     String?
-  ownerId     String    @unique
-  createdAt   DateTime  @default(now())
-  slug        String?   @unique
-  orders      Order[]
-  products    Product[]
-  owner       User      @relation(fields: [ownerId], references: [id])
-  mercadoPagoConnection MercadoPagoConnection?
+  id                     String                  @id @default(uuid())
+  name                   String
+  description            String?
+  logo                   String?
+  banner                 String?
+  segment                String?
+  ownerId                String                  @unique
+  createdAt              DateTime                @default(now())
+  slug                   String?                 @unique
+  orders                 Order[]
+  products               Product[]
+  owner                  User                    @relation(fields: [ownerId], references: [id])
+  mercadoPagoConnection  MercadoPagoConnection?
   mercadoPagoOAuthStates MercadoPagoOAuthState[]
 }
 
@@ -81,11 +82,20 @@ model Order {
   total     Float
   status    String      @default("PENDING")
   createdAt DateTime    @default(now())
+  expiresAt DateTime?
   userId    String
   storeId   String
+
+  cancellationReason String?
+  returnReason       String?
+  returnRequestedAt  DateTime?
+  returnStatus       String?
+
   store     Store       @relation(fields: [storeId], references: [id])
   user      User        @relation(fields: [userId], references: [id])
   items     OrderItem[]
+
+  returnRequests ReturnRequest[]
 }
 
 model OrderItem {
@@ -98,6 +108,45 @@ model OrderItem {
   order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product         @relation(fields: [productId], references: [id])
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  returnItems ReturnItem[]
+}
+
+model ReturnRequest {
+  id          String   @id @default(uuid())
+  reason      String
+  description String
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderId String
+  userId  String
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  items ReturnItem[]
+}
+
+model ReturnItem {
+  id             String @id @default(uuid())
+  quantity       Int
+
+  returnRequestId String
+  orderItemId     String
+
+  returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem     @relation(fields: [orderItemId], references: [id])
+
+  images ReturnImage[]
+}
+
+model ReturnImage {
+  id          String @id @default(uuid())
+  imageUrl    String
+
+  returnItemId String
+  returnItem   ReturnItem @relation(fields: [returnItemId], references: [id], onDelete: Cascade)
 }
 
 model MercadoPagoConnection {
@@ -112,7 +161,6 @@ model MercadoPagoConnection {
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 }
-
 
 model MercadoPagoOAuthState {
   id        String   @id @default(uuid())

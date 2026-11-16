@@ -9,6 +9,7 @@ import productRoutes from "./routes/productRoutes";
 import adminRoutes from "./routes/admin.routes";
 import orderRoutes from "./routes/orderRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import { cancelExpiredOrders } from "./services/orderExpirationService";
 
 
 dotenv.config();
@@ -85,9 +86,13 @@ app.get("/teste-orders", (req, res) => {
 
 const PORT = process.env.PORT || 3333;
 
-
-
-
 app.listen(PORT, () => {
-console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
+
+  // Verifica pedidos expirados a cada 1 minuto.
+  cancelExpiredOrders();
+
+  setInterval(() => {
+    cancelExpiredOrders();
+  }, 60 * 1000);
 });

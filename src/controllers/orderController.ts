@@ -198,11 +198,14 @@ export const createOrder = async (
             }
 
 
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
           const order = await tx.order.create({
             data: {
               userId,
               storeId,
               total,
+              expiresAt,
               items: {
                 create: orderItems,
               },
@@ -216,7 +219,6 @@ export const createOrder = async (
         }, {
           timeout: 15000,
         });
-      
           createdOrders.push(order);
         }
 
@@ -287,9 +289,7 @@ export const createOrder = async (
         res: Response
       ) => {
         try {
-
-        
-          const userId = (req as any).userId;
+        const userId = (req as any).userId;
 
           // =======================
           // BUSCAR A LOJA DO VENDEDOR
@@ -547,8 +547,19 @@ export const cancelOrder = async (
       if (order.userId !== userId) {
         throw new Error("SEM_PERMISSAO");
       }
+      
+      const updated = await tx.order.updateMany({
+        where: {
+          id,
+          userId,
+          status: "PENDING",
+        },
+        data: {
+          status: "CANCELLED",
+        },
+      });
 
-      if (order.status !== "PENDING") {
+      if (updated.count === 0) {
         throw new Error("PEDIDO_NAO_CANCELAVEL");
       }
 
@@ -576,10 +587,10 @@ export const cancelOrder = async (
         }
       }
 
-      return tx.order.update({
-        where: { id },
-        data: { status: "CANCELLED" },
-      });
+    return tx.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
     });
 
     return res.json({
