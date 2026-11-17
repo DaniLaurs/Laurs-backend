@@ -112,21 +112,10 @@ export const createReturnRequest = async (
     });
     }
 
-    const imagesPerItem = new Map<number, number>();
-
-        for (const index of imageItemIndexes) {
-        const total = (imagesPerItem.get(index) || 0) + 1;
-
-        imagesPerItem.set(index, total);
-
-        if (total > 5) {
-            return res.status(400).json({
-            error: "Você pode enviar no máximo 5 fotos por produto",
-            });
-        }
-        }
+    
 
     imageItemIndexes = parsedIndexes;
+
       } catch {
         return res.status(400).json({
           error: "Relacionamento das fotos inválido",
@@ -153,6 +142,20 @@ export const createReturnRequest = async (
       return res.status(400).json({
         error: "Relacionamento das fotos inválido",
       });
+    }
+
+    const imagesPerItem = new Map<number, number>();
+
+    for (const index of imageItemIndexes) {
+    const total = (imagesPerItem.get(index) || 0) + 1;
+
+    imagesPerItem.set(index, total);
+
+    if (total > 5) {
+        return res.status(400).json({
+        error: "Você pode enviar no máximo 5 fotos por produto",
+        });
+    }
     }
 
     if (

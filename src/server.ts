@@ -9,6 +9,7 @@ import productRoutes from "./routes/productRoutes";
 import adminRoutes from "./routes/admin.routes";
 import orderRoutes from "./routes/orderRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import returnRoutes from "./routes/returnRoutes";
 import { cancelExpiredOrders } from "./services/orderExpirationService";
 
 
@@ -55,6 +56,7 @@ app.use("/products", productRoutes);
 app.use("/admin", adminRoutes);
 app.use("/orders", orderRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/returns", returnRoutes);
 
 
 app.get("/profile", authMiddleware, (req, res) => {

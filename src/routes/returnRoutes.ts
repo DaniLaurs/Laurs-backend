@@ -26,6 +26,12 @@ router.post(
           });
         }
 
+        if (error.code === "LIMIT_UNEXPECTED_FILE") {
+          return res.status(400).json({
+            error: "Campo de imagem inválido ou limite de 10 imagens excedido",
+          });
+        }
+
         return res.status(400).json({
           error: "Erro ao enviar as imagens",
         });

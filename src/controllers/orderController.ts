@@ -587,11 +587,11 @@ export const cancelOrder = async (
         }
       }
 
-    return tx.order.findUnique({
-      where: { id },
-      include: { items: true },
-    });
-    });
+      return tx.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      });
 
     return res.json({
       message: "Pedido cancelado com sucesso",
