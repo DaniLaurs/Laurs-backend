@@ -316,6 +316,8 @@ export const createOrder = async (
               storeId: store.id,
             },
             include: {
+               store: true,
+
               items: {
                 include: {
                   product: {
@@ -427,13 +429,17 @@ export const createOrder = async (
           }
 
           const updatedOrder = await prisma.order.update({
-            where: {
-              id: orderId,
-            },
-            data: {
-              status,
-            },
-          });
+        where: {
+          id: orderId,
+        },
+        data: {
+          status,
+          completedAt:
+            status === "COMPLETED"
+              ? order.completedAt || new Date()
+              : null,
+        },
+      });
 
           return res.json(updatedOrder);
         } catch (error) {
@@ -622,6 +628,66 @@ export const cancelOrder = async (
 
     return res.status(500).json({
       error: "Erro ao cancelar pedido",
+    });
+  }
+};
+
+
+export const requestOrderCancellation = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).userId;
+
+    const orderId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const { cancellationReason } = req.body;
+
+    if (!cancellationReason || !cancellationReason.trim()) {
+      return res.status(400).json({
+        error: "Informe o motivo do cancelamento",
+      });
+    }
+
+    const updated = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        userId,
+        status: "PROCESSING",
+      },
+      data: {
+        status: "CANCELLATION_REQUESTED",
+        cancellationReason: cancellationReason.trim(),
+      },
+    });
+
+    if (updated.count === 0) {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          error: "Pedido não encontrado",
+        });
+      }
+
+      return res.status(400).json({
+        error: "Este pedido não pode receber uma solicitação de cancelamento",
+      });
+    }
+
+    return res.json({
+      message: "Solicitação de cancelamento enviada com sucesso",
+    });
+  } catch (error) {
+    console.error("Erro ao solicitar cancelamento:", error);
+
+    return res.status(500).json({
+      error: "Erro ao solicitar cancelamento",
     });
   }
 };

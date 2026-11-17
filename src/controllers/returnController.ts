@@ -187,6 +187,28 @@ export const createReturnRequest = async (
       });
     }
 
+      // Verifica o prazo de 7 dias após a conclusão.
+    if (order.status === "COMPLETED") {
+      if (!order.completedAt) {
+        return res.status(400).json({
+          error: "Data de conclusão do pedido não encontrada",
+        });
+      }
+
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+
+      const deadline =
+        order.completedAt.getTime() + sevenDaysInMs;
+
+      if (Date.now() > deadline) {
+        return res.status(400).json({
+          error: "O prazo de 7 dias para solicitar troca ou devolução expirou",
+        });
+      }
+    }
+
+
+
     if (!["SHIPPED", "COMPLETED"].includes(order.status)) {
       return res.status(400).json({
         error: "Este pedido ainda não está disponível para devolução",
@@ -236,6 +258,23 @@ export const createReturnRequest = async (
         if (!currentOrder) {
         throw new Error("PEDIDO_NAO_DISPONIVEL");
         }
+
+
+            // Verifica novamente o prazo de 7 dias.
+    if (currentOrder.status === "COMPLETED") {
+      if (!currentOrder.completedAt) {
+        throw new Error("DATA_CONCLUSAO_NAO_ENCONTRADA");
+      }
+
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+
+      const deadline =
+        currentOrder.completedAt.getTime() + sevenDaysInMs;
+
+      if (Date.now() > deadline) {
+        throw new Error("PRAZO_DEVOLUCAO_EXPIRADO");
+      }
+    }
 
         const orderItems = currentOrder.items;
 
@@ -339,6 +378,7 @@ export const createReturnRequest = async (
         error: "Este pedido não está mais disponível para devolução",
       });
     }
+    
 
     if (error.message === "ITEM_NAO_PERTENCE_AO_PEDIDO") {
       return res.status(400).json({
