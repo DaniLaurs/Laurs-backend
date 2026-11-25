@@ -2,11 +2,40 @@
 import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
 
-import { createReturnRequest } from "../controllers/returnController";
+import {
+  createReturnRequest,
+  getSellerReturnRequests,
+  decideReturnRequest,
+} from "../controllers/returnController";
 import { authMiddleware } from "../middleware/authMiddleware";
 import returnUpload from "../middleware/returnUpload";
-
+ 
 const router = Router();
+
+
+// =======================
+// LISTAR DEVOLUÇÕES DO VENDEDOR
+// =======================
+
+router.get(
+  "/seller",
+  authMiddleware,
+  getSellerReturnRequests
+);
+
+// =======================
+// DECISÃO DO VENDEDOR
+// =======================
+
+console.log("authMiddleware:", typeof authMiddleware);
+console.log("decideReturnRequest:", typeof decideReturnRequest);
+
+
+router.put(
+  "/:id/decision",
+  authMiddleware,
+  decideReturnRequest
+);
 
 router.post(
   "/",

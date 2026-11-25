@@ -268,6 +268,22 @@ export const createOrder = async (
                   variant: true,
                 },
               },
+
+              returnRequests: {
+                include: {
+                  items: {
+                    include: {
+                      images: true,
+                      orderItem: {
+                        include: {
+                          product: true,
+                          variant: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
             orderBy: {
               createdAt: "desc",
@@ -457,69 +473,84 @@ export const createOrder = async (
     // CANCEL ORDER
     // =======================
   
+export const getOrderById = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params as { id: string };
 
-      export const getOrderById = async (
-        req: Request,
-        res: Response
-        ) => {
-        try {
-        const userId = (req as any).userId;
-        const { id } = req.params as { id: string };
-
-
-        const order = await prisma.order.findFirst({
-          where: {
-            id,
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        OR: [
+          {
+            userId,
+          },
+          {
             store: {
               ownerId: userId,
             },
           },
+        ],
+      },
+      include: {
+        store: true,
+
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+
+   returnRequests: {
+      include: {
+        items: {
           include: {
-            store: true,
-
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-
-            items: {
+            images: true,
+            orderItem: {
               include: {
-                product: {
-                  include: {
-                    images: true,
-                  },
-                },
-
+                product: true,
                 variant: true,
               },
             },
           },
-        });
+        },
+      },
+    },
 
-        if (!order) {
-          return res.status(404).json({
-            error: "Pedido não encontrado",
-          });
-        }
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+              },
+            },
+            variant: true,
+          },
+        },
+      },
+    });
 
-        return res.json(order);
+    if (!order) {
+      return res.status(404).json({
+        error: "Pedido não encontrado",
+      });
+    }
 
+    return res.json(order);
 
-        } catch (error) {
-        console.log(error);
+  } catch (error) {
+    console.log(error);
 
-        return res.status(500).json({
-          error: "Erro ao buscar pedido",
-        });
-
-
-        }
-        };
-
-
+    return res.status(500).json({
+      error: "Erro ao buscar pedido",
+    });
+  }
+};
 
 export const cancelOrder = async (
   req: Request,
@@ -688,6 +719,144 @@ export const requestOrderCancellation = async (
 
     return res.status(500).json({
       error: "Erro ao solicitar cancelamento",
+    });
+  }
+};
+
+
+
+export const decideOrderCancellation = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).userId;
+
+    const orderId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+
+    const { decision, sellerResponse } = req.body;
+
+    if (!["APPROVE", "REJECT"].includes(decision)) {
+      return res.status(400).json({
+        error: "Decisão inválida",
+      });
+    }
+
+    if (
+      decision === "REJECT" &&
+      (!sellerResponse || !sellerResponse.trim())
+    ) {
+      return res.status(400).json({
+        error: "Informe o motivo da rejeição",
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          store: true,
+          items: true,
+        },
+      });
+
+      if (!order) {
+        throw new Error("PEDIDO_NAO_ENCONTRADO");
+      }
+
+      if (order.store.ownerId !== userId) {
+        throw new Error("SEM_PERMISSAO");
+      }
+
+      if (order.status !== "CANCELLATION_REQUESTED") {
+        throw new Error("SOLICITACAO_NAO_PENDENTE");
+      }
+
+      const updated = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          status: "CANCELLATION_REQUESTED",
+        },
+        data: {
+          status:
+            decision === "APPROVE"
+              ? "CANCELLED"
+              : "PROCESSING",
+          sellerResponse:
+            decision === "REJECT"
+              ? sellerResponse.trim()
+              : null,
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new Error("SOLICITACAO_NAO_PENDENTE");
+      }
+
+      if (decision === "APPROVE") {
+        for (const item of order.items) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: {
+                stock: {
+                  increment: item.quantity,
+                },
+              },
+            });
+          } else {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: {
+                  increment: item.quantity,
+                },
+              },
+            });
+          }
+        }
+      }
+
+      return tx.order.findUnique({
+        where: { id: orderId },
+        include: { items: true },
+      });
+    });
+
+    return res.json({
+      message:
+        decision === "APPROVE"
+          ? "Cancelamento aprovado com sucesso"
+          : "Cancelamento rejeitado com sucesso",
+      order: result,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "PEDIDO_NAO_ENCONTRADO") {
+        return res.status(404).json({
+          error: "Pedido não encontrado",
+        });
+      }
+
+      if (error.message === "SEM_PERMISSAO") {
+        return res.status(403).json({
+          error: "Você não pode decidir este cancelamento",
+        });
+      }
+
+      if (error.message === "SOLICITACAO_NAO_PENDENTE") {
+        return res.status(400).json({
+          error: "Esta solicitação não está mais pendente",
+        });
+      }
+    }
+
+    console.error("Erro ao decidir cancelamento:", error);
+
+    return res.status(500).json({
+      error: "Erro ao decidir cancelamento",
     });
   }
 };

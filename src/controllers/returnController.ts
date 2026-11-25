@@ -373,6 +373,18 @@ export const createReturnRequest = async (
 
   if (error instanceof Error) {
 
+        if (error.message === "DATA_CONCLUSAO_NAO_ENCONTRADA") {
+      return res.status(400).json({
+        error: "Data de conclusão do pedido não encontrada",
+      });
+    }
+
+    if (error.message === "PRAZO_DEVOLUCAO_EXPIRADO") {
+      return res.status(400).json({
+        error: "O prazo de 7 dias para solicitar troca ou devolução expirou",
+      });
+    }
+
     if (error.message === "PEDIDO_NAO_DISPONIVEL") {
       return res.status(400).json({
         error: "Este pedido não está mais disponível para devolução",
@@ -426,3 +438,228 @@ export const createReturnRequest = async (
     }
   }
 };
+
+
+
+// =======================
+// GET SELLER RETURN REQUESTS
+// =======================
+
+export const getSellerReturnRequests = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).userId;
+    console.log("USER ID:", userId);
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Usuário não autenticado",
+      });
+    }
+
+    const store = await prisma.store.findUnique({
+      where: {
+        ownerId: userId,
+      },
+    });
+
+    console.log("LOJA ENCONTRADA:", store);
+
+    if (!store) {
+      return res.status(404).json({
+        error: "Loja não encontrada",
+      });
+    }
+
+    const returnRequests = await prisma.returnRequest.findMany({
+      where: {
+        order: {
+          storeId: store.id,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        order: {
+          include: {
+            store: true,
+          },
+        },
+        items: {
+          include: {
+            images: true,
+            orderItem: {
+              include: {
+                product: true,
+                variant: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json(returnRequests);
+
+  } catch (error) {
+    console.error(
+      "ERRO AO BUSCAR DEVOLUÇÕES DO VENDEDOR:",
+      error
+    );
+
+    return res.status(500).json({
+      error: "Erro ao buscar solicitações de devolução",
+    });
+  }
+};
+
+
+
+export const decideReturnRequest = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).userId;
+    const returnId = Array.isArray(req.params.id)
+  ? req.params.id[0]
+  : req.params.id;
+
+    const { status, sellerResponse } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        error: "Usuário não autenticado",
+      });
+    }
+
+    // =======================
+    // VALIDAR DECISÃO
+    // =======================
+
+    if (
+      !["RETURN_APPROVED", "RETURN_REJECTED"].includes(status)
+    ) {
+      return res.status(400).json({
+        error: "Decisão inválida",
+      });
+    }
+
+    const responseText =
+      typeof sellerResponse === "string"
+        ? sellerResponse.trim()
+        : "";
+
+    if (status === "RETURN_REJECTED" && !responseText) {
+      return res.status(400).json({
+        error: "Informe o motivo da rejeição",
+      });
+    }
+
+    // =======================
+    // VERIFICAR SE A DEVOLUÇÃO
+    // PERTENCE À LOJA
+    // =======================
+
+    const returnRequest = await prisma.returnRequest.findFirst({
+      where: {
+        id: returnId,
+        order: {
+          store: {
+            ownerId: userId,
+          },
+        },
+      },
+    });
+
+    if (!returnRequest) {
+      return res.status(404).json({
+        error: "Solicitação não encontrada",
+      });
+    }
+
+    // =======================
+    // VERIFICAR STATUS
+    // =======================
+
+    if (returnRequest.status !== "PENDING") {
+      return res.status(400).json({
+        error: "Esta solicitação já foi decidida",
+      });
+    }
+
+    // =======================
+    // ATUALIZAR DECISÃO
+    // =======================
+
+    const updated = await prisma.returnRequest.updateMany({
+      where: {
+        id: returnId,
+        status: "PENDING",
+      },
+      data: {
+        status,
+        sellerResponse: responseText || null,
+      },
+    });
+
+    // Evita decisões simultâneas.
+    if (updated.count === 0) {
+      return res.status(409).json({
+        error: "Esta solicitação já foi decidida",
+      });
+    }
+
+    const updatedRequest = await prisma.returnRequest.findUnique({
+      where: {
+        id: returnId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        items: {
+          include: {
+            images: true,
+            orderItem: {
+              include: {
+                product: true,
+                variant: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return res.json({
+      message:
+        status === "RETURN_APPROVED"
+          ? "Devolução aprovada com sucesso"
+          : "Devolução rejeitada com sucesso",
+      returnRequest: updatedRequest,
+    });
+  } catch (error) {
+    console.error("ERRO AO DECIDIR DEVOLUÇÃO:", error);
+
+    return res.status(500).json({
+      error: "Erro ao atualizar decisão da devolução",
+    });
+  }
+};
+
+

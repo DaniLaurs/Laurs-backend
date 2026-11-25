@@ -88,6 +88,7 @@ model Order {
   storeId   String
 
   cancellationReason String?
+  sellerResponse String?
   returnReason       String?
   returnRequestedAt  DateTime?
   returnStatus       String?
@@ -117,6 +118,7 @@ model ReturnRequest {
   reason      String
   description String
   status      String   @default("PENDING")
+  sellerResponse String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
